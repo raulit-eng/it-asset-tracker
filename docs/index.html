@@ -1,0 +1,348 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>IT Asset Tracker</title>
+<style>
+  :root {
+    color-scheme: light;
+    --page: #f9f9f7; --surface: #fcfcfb; --ink: #0b0b0b; --ink-2: #52514e; --muted: #898781;
+    --grid: #e1e0d9; --axis: #c3c2b7; --ring: rgba(11,11,11,0.10); --wash: rgba(11,11,11,0.04);
+    --s1: #2a78d6; --s2: #eb6834; --s3: #1baf7a; --s4: #eda100; --s5: #e87ba4; --s6: #008300;
+    --q1: #86b6ef; --q2: #3987e5; --q3: #1c5cab; --q4: #0d366b;
+    --good: #0ca30c; --warning: #fab219; --serious: #ec835a; --critical: #d03b3b;
+    --accent: #2a78d6;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      color-scheme: dark;
+      --page: #0d0d0d; --surface: #1a1a19; --ink: #f0efec; --ink-2: #c3c2b7; --muted: #898781;
+      --grid: #2c2c2a; --axis: #383835; --ring: rgba(255,255,255,0.10); --wash: rgba(255,255,255,0.05);
+      --s1: #3987e5; --s2: #d95926; --s3: #199e70; --s4: #c98500; --s5: #d55181; --s6: #008300;
+      --q1: #184f95; --q2: #256abf; --q3: #3987e5; --q4: #86b6ef;
+      --accent: #3987e5;
+    }
+  }
+  :root[data-theme="dark"] {
+    color-scheme: dark;
+    --page: #0d0d0d; --surface: #1a1a19; --ink: #f0efec; --ink-2: #c3c2b7; --muted: #898781;
+    --grid: #2c2c2a; --axis: #383835; --ring: rgba(255,255,255,0.10); --wash: rgba(255,255,255,0.05);
+    --s1: #3987e5; --s2: #d95926; --s3: #199e70; --s4: #c98500; --s5: #d55181; --s6: #008300;
+    --q1: #184f95; --q2: #256abf; --q3: #3987e5; --q4: #86b6ef;
+    --accent: #3987e5;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--page); color: var(--ink);
+         font: 14px/1.45 system-ui, -apple-system, "Segoe UI", sans-serif; }
+  .wrap { max-width: 1200px; margin: 0 auto; padding: 28px 16px 48px; }
+  header { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: flex-end; gap: 12px; margin-bottom: 20px; }
+  .eyebrow { font-size: 12px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); margin: 0 0 4px; }
+  h1 { font-size: 26px; margin: 0; font-weight: 650; }
+  .sub { color: var(--ink-2); margin: 4px 0 0; }
+  .theme-btn { background: var(--surface); color: var(--ink-2); border: 1px solid var(--ring); border-radius: 8px;
+               padding: 6px 12px; font: inherit; cursor: pointer; }
+  .theme-btn:hover { background: var(--wash); }
+
+  .kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; margin-bottom: 16px; }
+  .kpi { background: var(--surface); border: 1px solid var(--ring); border-radius: 12px; padding: 16px; }
+  .kpi .label { color: var(--ink-2); font-size: 13px; display: flex; align-items: center; gap: 6px; }
+  .kpi .value { font-size: 30px; font-weight: 650; margin: 6px 0 2px; }
+  .kpi .note { color: var(--muted); font-size: 12.5px; }
+  .dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; flex: none; }
+
+  .grid2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(340px, 1fr)); gap: 16px; margin-bottom: 16px; }
+  .card { background: var(--surface); border: 1px solid var(--ring); border-radius: 12px; padding: 18px; min-width: 0; }
+  .card h2 { font-size: 15px; margin: 0 0 2px; font-weight: 600; }
+  .card .desc { color: var(--muted); font-size: 12.5px; margin: 0 0 12px; }
+  .legend { display: flex; flex-wrap: wrap; gap: 4px 14px; margin: 0 0 10px; font-size: 12.5px; color: var(--ink-2); }
+  .legend span { display: inline-flex; align-items: center; gap: 6px; }
+  .legend i { width: 10px; height: 10px; border-radius: 3px; display: inline-block; }
+  svg { display: block; width: 100%; height: auto; overflow: visible; }
+  svg text { font-family: inherit; }
+  .tick { fill: var(--muted); font-size: 11px; font-variant-numeric: tabular-nums; }
+  .cat { fill: var(--ink-2); font-size: 12px; }
+  .val { fill: var(--ink-2); font-size: 11.5px; font-variant-numeric: tabular-nums; }
+  .hit { fill: transparent; cursor: default; }
+  .hit:hover { fill: var(--wash); }
+  details { margin-top: 10px; font-size: 12.5px; color: var(--ink-2); }
+  details summary { cursor: pointer; color: var(--muted); }
+  details table { margin-top: 8px; }
+
+  .issues { list-style: none; padding: 0; margin: 4px 0 0; }
+  .issues li { display: grid; grid-template-columns: 1fr auto; gap: 8px; align-items: center; padding: 10px 0; border-top: 1px solid var(--grid); }
+  .issues li:first-child { border-top: 0; }
+  .issues .name { display: flex; align-items: center; gap: 8px; }
+  .issues .bar { grid-column: 1 / -1; height: 6px; border-radius: 3px; background: var(--grid); overflow: hidden; }
+  .issues .bar b { display: block; height: 100%; border-radius: 3px; }
+  .issues .count { font-variant-numeric: tabular-nums; font-weight: 600; }
+  .badge { font-size: 11px; font-weight: 600; border: 1.5px solid; border-radius: 4px; padding: 0 5px; line-height: 16px; }
+
+  .tabs { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 12px; align-items: center; }
+  .tab { background: transparent; color: var(--ink-2); border: 1px solid var(--ring); border-radius: 999px; padding: 6px 12px;
+         font: inherit; font-size: 13px; cursor: pointer; }
+  .tab:hover { background: var(--wash); }
+  .tab[aria-selected="true"] { background: var(--ink); color: var(--surface); border-color: var(--ink); }
+  .tab .n { opacity: .7; margin-left: 4px; font-variant-numeric: tabular-nums; }
+  .search { margin-left: auto; min-width: 200px; flex: 1 1 200px; max-width: 280px; background: var(--page); color: var(--ink);
+            border: 1px solid var(--ring); border-radius: 8px; padding: 7px 10px; font: inherit; }
+  .table-wrap { overflow-x: auto; max-height: 420px; overflow-y: auto; border-top: 1px solid var(--grid); }
+  table { border-collapse: collapse; width: 100%; font-size: 13px; }
+  th { text-align: left; color: var(--muted); font-weight: 600; font-size: 12px; position: sticky; top: 0; background: var(--surface);
+       padding: 8px 10px; border-bottom: 1px solid var(--grid); white-space: nowrap; }
+  td { padding: 7px 10px; border-bottom: 1px solid var(--grid); white-space: nowrap; font-variant-numeric: tabular-nums; }
+  tr:hover td { background: var(--wash); }
+  .tab-desc { color: var(--muted); font-size: 12.5px; margin: 0 0 8px; }
+  .empty { color: var(--muted); padding: 16px 10px; }
+
+  #tip { position: fixed; pointer-events: none; background: var(--ink); color: var(--surface); font-size: 12.5px;
+         padding: 7px 9px; border-radius: 6px; opacity: 0; transition: opacity .08s; z-index: 10; max-width: 260px; }
+  #tip b { font-weight: 600; }
+  footer { color: var(--muted); font-size: 12.5px; margin-top: 24px; }
+  footer a { color: var(--accent); }
+  @media (max-width: 520px) { h1 { font-size: 22px; } .kpi .value { font-size: 26px; } .search { max-width: none; margin-left: 0; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div>
+      <p class="eyebrow" id="company"></p>
+      <h1>IT Asset Tracker</h1>
+      <p class="sub" id="asof"></p>
+    </div>
+    <button class="theme-btn" id="themeBtn" type="button">Toggle dark mode</button>
+  </header>
+
+  <section class="kpis" id="kpis"></section>
+
+  <section class="grid2">
+    <div class="card">
+      <h2>Devices by site</h2>
+      <p class="desc">Active devices (in use, in stock or in repair)</p>
+      <div class="legend" id="siteLegend"></div>
+      <div id="siteChart"></div>
+      <details><summary>View as table</summary><div id="siteTable"></div></details>
+    </div>
+    <div class="card">
+      <h2>Refresh forecast</h2>
+      <p class="desc">Estimated replacement cost when in-use devices reach the end of their lifecycle</p>
+      <div id="forecastChart"></div>
+      <details><summary>View as table</summary><div id="forecastTable"></div></details>
+    </div>
+  </section>
+
+  <section class="grid2">
+    <div class="card">
+      <h2>Fleet age</h2>
+      <p class="desc">In-use devices by age, per device type</p>
+      <div class="legend" id="ageLegend"></div>
+      <div id="ageChart"></div>
+      <details><summary>View as table</summary><div id="ageTable"></div></details>
+    </div>
+    <div class="card">
+      <h2>Security &amp; compliance</h2>
+      <p class="desc">Managed devices in use that need attention</p>
+      <ul class="issues" id="issues"></ul>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>Action list</h2>
+    <p class="desc">Everything that needs follow-up, with who has the device and where</p>
+    <div class="tabs" role="tablist" id="tabs">
+      <input class="search" id="search" type="search" placeholder="Search name, tag, site…" aria-label="Search the action list">
+    </div>
+    <p class="tab-desc" id="tabDesc"></p>
+    <div class="table-wrap"><table id="actionTable"></table></div>
+  </section>
+
+  <footer>
+    Built with Python, SQLite and SQL from <code>sql/reports.sql</code>. All people and devices are randomly generated sample data.
+  </footer>
+</div>
+<div id="tip" role="tooltip"></div>
+
+<script>
+const DATA = {"company": "Summit Logistics (sample data)", "as_of": "2026-10-19", "types": ["Laptop", "Desktop", "iPhone", "iPad", "Monitor", "Printer"], "age_bands": ["Under 1 yr", "1-3 yrs", "3-5 yrs", "5+ yrs"], "kpis": {"active": 1188, "in_use": 1144, "in_stock": 36, "in_repair": 8, "overdue": 215, "overdue_cost": 211270.0, "offboarding_devices": 21, "offboarding_people": 8, "compliance": 75, "warranty": 55}, "sites": [{"label": "Los Angeles HQ", "values": {"Desktop": 27, "Laptop": 95, "Monitor": 130, "Printer": 2, "iPad": 19, "iPhone": 77}}, {"label": "Long Beach", "values": {"Desktop": 11, "Laptop": 34, "Monitor": 45, "Printer": 2, "iPad": 3, "iPhone": 24}}, {"label": "Santa Clarita", "values": {"Desktop": 8, "Laptop": 34, "Monitor": 41, "Printer": 5, "iPad": 3, "iPhone": 29}}, {"label": "Palmdale", "values": {"Desktop": 7, "Laptop": 24, "Monitor": 28, "Printer": 5, "iPad": 4, "iPhone": 20}}, {"label": "Burbank", "values": {"Desktop": 21, "Laptop": 32, "Monitor": 45, "Printer": 3, "iPad": 12, "iPhone": 22}}, {"label": "Pasadena", "values": {"Desktop": 5, "Laptop": 27, "Monitor": 31, "Printer": 3, "iPad": 7, "iPhone": 22}}, {"label": "Torrance", "values": {"Desktop": 7, "Laptop": 34, "Monitor": 43, "Printer": 3, "iPad": 5, "iPhone": 27}}, {"label": "Ontario", "values": {"Desktop": 7, "Laptop": 23, "Monitor": 24, "Printer": 4, "iPad": 8, "iPhone": 15}}, {"label": "Irvine", "values": {"Desktop": 5, "Laptop": 24, "Monitor": 27, "Printer": 4, "iPad": 3, "iPhone": 18}}], "fleet_age": [{"label": "Laptop", "values": {"Under 1 yr": 83, "1-3 yrs": 111, "3-5 yrs": 59, "5+ yrs": 49}}, {"label": "Desktop", "values": {"Under 1 yr": 36, "1-3 yrs": 29, "3-5 yrs": 18, "5+ yrs": 15}}, {"label": "iPhone", "values": {"Under 1 yr": 73, "1-3 yrs": 102, "3-5 yrs": 54, "5+ yrs": 15}}, {"label": "iPad", "values": {"Under 1 yr": 16, "1-3 yrs": 26, "3-5 yrs": 12, "5+ yrs": 10}}, {"label": "Monitor", "values": {"Under 1 yr": 117, "1-3 yrs": 141, "3-5 yrs": 89, "5+ yrs": 58}}, {"label": "Printer", "values": {"Under 1 yr": 3, "1-3 yrs": 13, "3-5 yrs": 3, "5+ yrs": 12}}], "forecast": [{"due": "Overdue now", "devices": 215, "cost": 211270.0}, {"due": "2026", "devices": 24, "cost": 20660.0}, {"due": "2027", "devices": 125, "cost": 116770.0}, {"due": "2028", "devices": 191, "cost": 172860.0}, {"due": "2029", "devices": 207, "cost": 186040.0}], "compliance_summary": [{"label": "Not enrolled in MDM", "count": 22, "status": "critical"}, {"label": "Disk not encrypted", "count": 10, "status": "critical"}, {"label": "No MDM check-in for 30+ days", "count": 43, "status": "serious"}], "actions": [{"key": "offboarding", "label": "Offboarding gaps", "description": "Devices still assigned to people who have left. Recover these first.", "columns": ["Former employee", "Left on", "Days since leaving", "Asset tag", "Type", "Model", "Site"], "rows": [["Ethan Davis", "2026-05-24", 148, "AT-000127", "Desktop", "HP EliteDesk 800", "Santa Clarita"], ["Ethan Davis", "2026-05-24", 148, "AT-000128", "Monitor", "LG 27UP850 27in", "Santa Clarita"], ["Yuki Flores", "2026-06-05", 136, "AT-000187", "Laptop", "Dell Latitude 5450", "Pasadena"], ["Yuki Flores", "2026-06-05", 136, "AT-000188", "iPad", "Apple iPad 10th Gen", "Pasadena"], ["Isaac Brown", "2026-07-12", 99, "AT-000152", "Laptop", "Dell Latitude 5450", "Los Angeles HQ"], ["Isaac Brown", "2026-07-12", 99, "AT-000153", "iPhone", "Apple iPhone 15", "Los Angeles HQ"], ["Isaac Brown", "2026-07-12", 99, "AT-000154", "Monitor", "Dell P2723DE 27in", "Los Angeles HQ"], ["Isaac Brown", "2026-07-12", 99, "AT-000155", "Monitor", "Dell P2723DE 27in", "Los Angeles HQ"], ["Carlos Wilson", "2026-07-23", 88, "AT-000560", "Desktop", "HP EliteDesk 800", "Los Angeles HQ"], ["Carlos Wilson", "2026-07-23", 88, "AT-000561", "iPhone", "Apple iPhone 16", "Los Angeles HQ"], ["Carlos Wilson", "2026-07-23", 88, "AT-000562", "Monitor", "Dell P2723DE 27in", "Los Angeles HQ"], ["Emily Brown", "2026-08-27", 53, "AT-000590", "Laptop", "Dell Latitude 5450", "Los Angeles HQ"], ["Emily Brown", "2026-08-27", 53, "AT-000591", "iPhone", "Apple iPhone 16", "Los Angeles HQ"], ["Emily Brown", "2026-08-27", 53, "AT-000592", "Monitor", "Dell P2723DE 27in", "Los Angeles HQ"], ["Emily Brown", "2026-08-27", 53, "AT-000593", "Monitor", "Dell P2723DE 27in", "Los Angeles HQ"], ["Sofia Jackson", "2026-08-31", 49, "AT-000551", "Laptop", "Dell Latitude 5450", "Palmdale"], ["Sofia Jackson", "2026-08-31", 49, "AT-000552", "Monitor", "Dell P2723DE 27in", "Palmdale"], ["Sofia Jackson", "2026-08-31", 49, "AT-000553", "Monitor", "Dell P2723DE 27in", "Palmdale"], ["Michael Hall", "2026-09-28", 21, "AT-000075", "Desktop", "Dell OptiPlex 7020", "Ontario"], ["Kevin Young", "2026-10-14", 5, "AT-000800", "Desktop", "Dell OptiPlex 7020", "Burbank"], ["Kevin Young", "2026-10-14", 5, "AT-000801", "iPad", "Apple iPad Air", "Burbank"]]}, {"key": "compliance", "label": "Compliance", "description": "Managed devices missing MDM enrollment, disk encryption, or a recent check-in.", "columns": ["Asset tag", "Type", "Model", "Assigned to", "Site", "Issue"], "rows": [["AT-000915", "Laptop", "Apple MacBook Air 13", "Mei Wilson", "Irvine", "Disk not encrypted"], ["AT-001076", "Laptop", "Dell Latitude 5450", "Jose Ramirez", "Irvine", "Disk not encrypted"], ["AT-000380", "Laptop", "Apple MacBook Pro 14", "Emily Rivera", "Long Beach", "Disk not encrypted"], ["AT-000457", "Laptop", "Dell Latitude 5450", "Jose Lee", "Los Angeles HQ", "Disk not encrypted"], ["AT-000545", "Laptop", "Dell Latitude 5450", "Fatima Jackson", "Los Angeles HQ", "Disk not encrypted"], ["AT-000669", "Desktop", "Dell OptiPlex 7020", "Fatima Lopez", "Los Angeles HQ", "Disk not encrypted"], ["AT-000773", "Laptop", "Apple MacBook Air 13", "Chloe Lopez", "Los Angeles HQ", "Disk not encrypted"], ["AT-000187", "Laptop", "Dell Latitude 5450", "Yuki Flores", "Pasadena", "Disk not encrypted"], ["AT-000127", "Desktop", "HP EliteDesk 800", "Ethan Davis", "Santa Clarita", "Disk not encrypted"], ["AT-001062", "Laptop", "Apple MacBook Pro 14", "Ethan Garcia", "Torrance", "Disk not encrypted"], ["AT-000783", "Laptop", "Lenovo ThinkPad T14", "Hannah Nguyen", "Torrance", "No check-in for 116 days"], ["AT-000407", "Desktop", "Dell OptiPlex 7020", "Marcus Gutierrez", "Santa Clarita", "No check-in for 117 days"], ["AT-001019", "iPhone", "Apple iPhone 16", "Jose Rivera", "Torrance", "No check-in for 117 days"], ["AT-000396", "Desktop", "HP EliteDesk 800", "Nora Rodriguez", "Ontario", "No check-in for 118 days"], ["AT-000122", "iPhone", "Apple iPhone 16", "Rosa Gutierrez", "Torrance", "No check-in for 122 days"], ["AT-000401", "iPhone", "Apple iPhone 15", "Ethan Martinez", "Santa Clarita", "No check-in for 123 days"], ["AT-000967", "iPhone", "Apple iPhone 16", "Linh Rivera", "Santa Clarita", "No check-in for 125 days"], ["AT-000105", "iPad", "Apple iPad Air", "Valeria Nguyen", "Pasadena", "No check-in for 132 days"], ["AT-000012", "Laptop", "Apple MacBook Air 13", "Grace Martinez", "Palmdale", "No check-in for 134 days"], ["AT-000710", "iPhone", "Apple iPhone 15", "Jordan Young", "Los Angeles HQ", "No check-in for 136 days"], ["AT-000018", "Desktop", "Dell OptiPlex 7020", "Jose Patel", "Palmdale", "No check-in for 141 days"], ["AT-000504", "iPhone", "Apple iPhone 16", "Diego Morales", "Torrance", "No check-in for 147 days"], ["AT-000810", "Laptop", "Apple MacBook Air 13", "Linh Cruz", "Long Beach", "No check-in for 148 days"], ["AT-000419", "iPhone", "Apple iPhone 15", "Diego Johnson", "Palmdale", "No check-in for 153 days"], ["AT-000770", "Laptop", "Apple MacBook Air 13", "Ana Johnson", "Torrance", "No check-in for 153 days"], ["AT-000205", "Laptop", "Apple MacBook Pro 14", "Samuel Chen", "Irvine", "No check-in for 155 days"], ["AT-000320", "Laptop", "Apple MacBook Air 13", "Mei Kim", "Santa Clarita", "No check-in for 157 days"], ["AT-000441", "Laptop", "Apple MacBook Pro 14", "Tyler Okafor", "Santa Clarita", "No check-in for 158 days"], ["AT-000324", "iPhone", "Apple iPhone 16", "Ana Rodriguez", "Los Angeles HQ", "No check-in for 35 days"], ["AT-000020", "iPhone", "Apple iPhone 16", "Kevin Lopez", "Burbank", "No check-in for 37 days"], ["AT-000311", "Laptop", "Apple MacBook Pro 14", "Sofia Johnson", "Burbank", "No check-in for 39 days"], ["AT-000916", "iPhone", "Apple iPhone 15", "Mei Wilson", "Irvine", "No check-in for 52 days"], ["AT-000897", "Desktop", "HP EliteDesk 800", "Maria Kim", "Long Beach", "No check-in for 58 days"], ["AT-000962", "Laptop", "Apple MacBook Air 13", "James Smith", "Pasadena", "No check-in for 58 days"], ["AT-000804", "Laptop", "Lenovo ThinkPad T14", "Grace Young", "Los Angeles HQ", "No check-in for 60 days"], ["AT-000697", "iPhone", "Apple iPhone 15", "Grace Torres", "Burbank", "No check-in for 61 days"], ["AT-000352", "iPhone", "Apple iPhone 16", "Mei Cruz", "Los Angeles HQ", "No check-in for 63 days"], ["AT-000813", "iPhone", "Apple iPhone 16", "David Walker", "Ontario", "No check-in for 63 days"], ["AT-000199", "Laptop", "Apple MacBook Air 13", "Jose Jackson", "Los Angeles HQ", "No check-in for 64 days"], ["AT-000987", "Laptop", "Apple MacBook Air 13", "Aisha Johnson", "Torrance", "No check-in for 64 days"], ["AT-000601", "iPad", "Apple iPad 10th Gen", "Emily Kim", "Los Angeles HQ", "No check-in for 65 days"], ["AT-000774", "iPad", "Apple iPad 10th Gen", "Chloe Lopez", "Los Angeles HQ", "No check-in for 65 days"], ["AT-000876", "iPhone", "Apple iPhone 15", "Mei Young", "Ontario", "No check-in for 66 days"], ["AT-001083", "iPad", "Apple iPad 10th Gen", "Mei Rodriguez", "Torrance", "No check-in for 66 days"], ["AT-000925", "Laptop", "Apple MacBook Pro 14", "Tyler Hernandez", "Ontario", "No check-in for 68 days"], ["AT-000673", "iPhone", "Apple iPhone 16", "Marcus Jackson", "Los Angeles HQ", "No check-in for 73 days"], ["AT-001059", "Desktop", "HP EliteDesk 800", "Luis Thomas", "Los Angeles HQ", "No check-in for 76 days"], ["AT-000086", "iPhone", "Apple iPhone 15", "Jose Lopez", "Irvine", "No check-in for 79 days"], ["AT-000300", "Laptop", "Dell Latitude 5450", "Jordan Nguyen", "Torrance", "No check-in for 87 days"], ["AT-000635", "iPhone", "Apple iPhone 15", "Diego Williams", "Torrance", "No check-in for 88 days"], ["AT-000253", "Desktop", "Dell OptiPlex 7020", "Linh Walker", "Burbank", "No check-in for 96 days"], ["AT-000129", "Desktop", "Dell OptiPlex 7020", "Maria Rivera", "Ontario", "No check-in for 97 days"], ["AT-000797", "Laptop", "Apple MacBook Pro 14", "Maria Reyes", "Santa Clarita", "No check-in for 98 days"], ["AT-000934", "iPhone", "Apple iPhone 16", "Hannah Wilson", "Burbank", "Not enrolled in MDM"], ["AT-000206", "iPhone", "Apple iPhone 16", "Samuel Chen", "Irvine", "Not enrolled in MDM"], ["AT-000746", "Desktop", "Dell OptiPlex 7020", "James Walker", "Irvine", "Not enrolled in MDM"], ["AT-000192", "Laptop", "Apple MacBook Air 13", "Marcus Gutierrez", "Long Beach", "Not enrolled in MDM"], ["AT-000285", "Laptop", "Apple MacBook Pro 14", "Marcus Smith", "Long Beach", "Not enrolled in MDM"], ["AT-000470", "Laptop", "Apple MacBook Air 13", "Diego Smith", "Long Beach", "Not enrolled in MDM"], ["AT-000692", "Laptop", "Lenovo ThinkPad T14", "Maria Reyes", "Long Beach", "Not enrolled in MDM"], ["AT-001065", "iPhone", "Apple iPhone 15", "Brian Flores", "Long Beach", "Not enrolled in MDM"], ["AT-000390", "Laptop", "Dell Latitude 5450", "Fatima Walker", "Los Angeles HQ", "Not enrolled in MDM"], ["AT-000458", "iPhone", "Apple iPhone 15", "Jose Lee", "Los Angeles HQ", "Not enrolled in MDM"], ["AT-000539", "iPhone", "Apple iPhone 16", "Priya Cruz", "Los Angeles HQ", "Not enrolled in MDM"], ["AT-000616", "Desktop", "Dell OptiPlex 7020", "Daniel Hernandez", "Los Angeles HQ", "Not enrolled in MDM"], ["AT-001042", "Desktop", "Dell OptiPlex 7020", "Maria Martinez", "Los Angeles HQ", "Not enrolled in MDM"], ["AT-000361", "Laptop", "Lenovo ThinkPad T14", "Sofia Jackson", "Ontario", "Not enrolled in MDM"], ["AT-000991", "Laptop", "Apple MacBook Air 13", "Isaac Lee", "Palmdale", "Not enrolled in MDM"], ["AT-000104", "iPhone", "Apple iPhone 15", "Valeria Nguyen", "Pasadena", "Not enrolled in MDM"], ["AT-000140", "Laptop", "Apple MacBook Pro 14", "Marcus Johnson", "Pasadena", "Not enrolled in MDM"], ["AT-000514", "Laptop", "Lenovo ThinkPad T14", "Priya Lee", "Pasadena", "Not enrolled in MDM"], ["AT-000733", "Desktop", "HP EliteDesk 800", "Ethan Wilson", "Pasadena", "Not enrolled in MDM"], ["AT-000185", "Laptop", "Lenovo ThinkPad T14", "Priya Ramirez", "Santa Clarita", "Not enrolled in MDM"], ["AT-000949", "iPhone", "Apple iPhone 15", "Isaac Martinez", "Santa Clarita", "Not enrolled in MDM"], ["AT-000871", "iPhone", "Apple iPhone 15", "Emily Wilson", "Torrance", "Not enrolled in MDM"]]}, {"key": "refresh", "label": "Overdue for refresh", "description": "In-use devices older than their lifecycle, oldest first.", "columns": ["Asset tag", "Type", "Model", "Assigned to", "Site", "Purchased", "Age (yrs)"], "rows": [["AT-000241", "Monitor", "LG 27UP850 27in", "Elena Ramirez", "Burbank", "2019-01-04", 7.8], ["AT-000092", "Laptop", "Apple MacBook Air 13", "Diego Rivera", "Santa Clarita", "2019-02-01", 7.7], ["AT-000990", "Monitor", "LG 27UP850 27in", "Aisha Johnson", "Torrance", "2019-01-26", 7.7], ["AT-000309", "Monitor", "Dell P2723DE 27in", "James Flores", "Santa Clarita", "2019-03-08", 7.6], ["AT-000659", "Desktop", "Dell OptiPlex 7020", "Marcus Chen", "Burbank", "2019-02-28", 7.6], ["AT-000706", "Monitor", "LG 27UP850 27in", "Luis Lee", "Torrance", "2019-02-24", 7.6], ["AT-000721", "Laptop", "Apple MacBook Air 13", "Elena Williams", "Santa Clarita", "2019-03-21", 7.6], ["AT-000034", "Laptop", "Lenovo ThinkPad T14", "Ethan Gutierrez", "Los Angeles HQ", "2019-04-16", 7.5], ["AT-000429", "Laptop", "Dell Latitude 5450", "Maria Anderson", "Irvine", "2019-04-20", 7.5], ["AT-001054", "Monitor", "Dell P2723DE 27in", "Daniel Jackson", "Irvine", "2019-04-12", 7.5], ["AT-001061", "Monitor", "LG 27UP850 27in", "Luis Thomas", "Los Angeles HQ", "2019-05-06", 7.5], ["AT-000551", "Laptop", "Dell Latitude 5450", "Sofia Jackson", "Palmdale", "2019-05-18", 7.4], ["AT-000611", "Monitor", "LG 27UP850 27in", "Marcus Rodriguez", "Torrance", "2019-06-05", 7.4], ["AT-000739", "Monitor", "Dell P2723DE 27in", "Carlos Johnson", "Ontario", "2019-05-31", 7.4], ["AT-001136", "Printer", "HP LaserJet M611", "Shared", "Palmdale", "2019-05-11", 7.4], ["AT-000088", "Laptop", "Lenovo ThinkPad T14", "Carlos Morales", "Los Angeles HQ", "2019-06-29", 7.3], ["AT-000115", "Laptop", "Dell Latitude 5450", "Priya Young", "Long Beach", "2019-07-13", 7.3], ["AT-000251", "Desktop", "HP EliteDesk 800", "Isaac Rodriguez", "Palmdale", "2019-06-16", 7.3], ["AT-000849", "Monitor", "LG 27UP850 27in", "Omar Walker", "Los Angeles HQ", "2019-06-27", 7.3], ["AT-001011", "Monitor", "LG 27UP850 27in", "Omar Wilson", "Ontario", "2019-06-26", 7.3], ["AT-001126", "Printer", "Brother MFC-L8900", "Shared", "Santa Clarita", "2019-06-22", 7.3], ["AT-000015", "Laptop", "Apple MacBook Pro 14", "Grace Smith", "Palmdale", "2019-08-21", 7.2], ["AT-000412", "Desktop", "Dell OptiPlex 7020", "Jordan Hall", "Irvine", "2019-08-23", 7.2], ["AT-000447", "Laptop", "Apple MacBook Pro 14", "Hannah Kim", "Los Angeles HQ", "2019-08-22", 7.2], ["AT-000501", "Laptop", "Apple MacBook Pro 14", "Sofia Nguyen", "Torrance", "2019-08-04", 7.2], ["AT-000509", "Monitor", "Dell P2723DE 27in", "Samuel Brown", "Ontario", "2019-08-25", 7.2], ["AT-001151", "Printer", "HP LaserJet M611", "Shared", "Pasadena", "2019-09-19", 7.1], ["AT-001159", "Printer", "HP LaserJet M611", "Shared", "Torrance", "2019-09-14", 7.1], ["AT-000344", "Laptop", "Lenovo ThinkPad T14", "Luis Patel", "Pasadena", "2019-10-01", 7.0], ["AT-000348", "Laptop", "Apple MacBook Air 13", "Fatima Lee", "Long Beach", "2019-10-03", 7.0], ["AT-000522", "Monitor", "LG 27UP850 27in", "Brian Lopez", "Irvine", "2019-10-13", 7.0], ["AT-000531", "Monitor", "LG 27UP850 27in", "Andre Patel", "Torrance", "2019-10-05", 7.0], ["AT-000612", "Laptop", "Dell Latitude 5450", "Ana Lee", "Irvine", "2019-10-11", 7.0], ["AT-000661", "Monitor", "Dell P2723DE 27in", "Marcus Chen", "Burbank", "2019-10-09", 7.0], ["AT-000875", "Laptop", "Apple MacBook Pro 14", "Mei Young", "Ontario", "2019-10-08", 7.0], ["AT-000220", "Laptop", "Lenovo ThinkPad T14", "Linh Johnson", "Los Angeles HQ", "2019-11-13", 6.9], ["AT-000252", "iPad", "Apple iPad 10th Gen", "Isaac Rodriguez", "Palmdale", "2019-11-12", 6.9], ["AT-000541", "Desktop", "Dell OptiPlex 7020", "Yuki Okafor", "Burbank", "2019-11-07", 6.9], ["AT-000569", "iPad", "Apple iPad 10th Gen", "Isaac Rivera", "Los Angeles HQ", "2019-12-02", 6.9], ["AT-001127", "Printer", "Brother MFC-L8900", "Shared", "Santa Clarita", "2019-12-06", 6.9], ["AT-000449", "Monitor", "Dell P2723DE 27in", "Hannah Kim", "Los Angeles HQ", "2019-12-31", 6.8], ["AT-001138", "Printer", "HP LaserJet M611", "Shared", "Palmdale", "2020-01-14", 6.8], ["AT-001152", "Printer", "HP LaserJet M611", "Shared", "Pasadena", "2020-01-06", 6.8], ["AT-001174", "Printer", "Brother MFC-L8900", "Shared", "Irvine", "2019-12-25", 6.8], ["AT-000001", "Laptop", "Lenovo ThinkPad T14", "Jasmine Hernandez", "Long Beach", "2020-02-02", 6.7], ["AT-000036", "Monitor", "Dell P2723DE 27in", "Ethan Gutierrez", "Los Angeles HQ", "2020-01-31", 6.7], ["AT-000766", "Laptop", "Apple MacBook Pro 14", "Mei Lopez", "Los Angeles HQ", "2020-02-23", 6.7], ["AT-000819", "Laptop", "Apple MacBook Pro 14", "Mei Okafor", "Irvine", "2020-02-15", 6.7], ["AT-000936", "Laptop", "Dell Latitude 5450", "Grace Williams", "Torrance", "2020-02-22", 6.7], ["AT-000204", "Monitor", "Dell P2723DE 27in", "Diego Okafor", "Pasadena", "2020-03-17", 6.6], ["AT-000381", "Monitor", "Dell P2723DE 27in", "Emily Rivera", "Long Beach", "2020-03-29", 6.6], ["AT-000383", "Monitor", "Dell P2723DE 27in", "Nora Lee", "Burbank", "2020-03-07", 6.6], ["AT-000589", "Monitor", "Dell P2723DE 27in", "David Lee", "Palmdale", "2020-03-26", 6.6], ["AT-000666", "Monitor", "Dell P2723DE 27in", "Mei Chen", "Torrance", "2020-03-31", 6.6], ["AT-001040", "Laptop", "Lenovo ThinkPad T14", "Diego Wilson", "Ontario", "2020-03-10", 6.6], ["AT-000340", "Monitor", "LG 27UP850 27in", "Carlos Kim", "Burbank", "2020-04-27", 6.5], ["AT-000574", "Monitor", "LG 27UP850 27in", "Marcus Ramirez", "Long Beach", "2020-04-11", 6.5], ["AT-000847", "Desktop", "HP EliteDesk 800", "Omar Walker", "Los Angeles HQ", "2020-04-25", 6.5], ["AT-000374", "iPad", "Apple iPad Air", "Marcus Davis", "Pasadena", "2020-06-01", 6.4], ["AT-000506", "Laptop", "Dell Latitude 5450", "Samuel Brown", "Ontario", "2020-05-26", 6.4], ["AT-000868", "Desktop", "HP EliteDesk 800", "Nora Lopez", "Ontario", "2020-06-12", 6.4], ["AT-000877", "Monitor", "Dell P2723DE 27in", "Mei Young", "Ontario", "2020-05-13", 6.4], ["AT-000901", "Monitor", "Dell P2723DE 27in", "Rosa Wilson", "Los Angeles HQ", "2020-05-14", 6.4], ["AT-001041", "Monitor", "LG 27UP850 27in", "Diego Wilson", "Ontario", "2020-05-24", 6.4], ["AT-001165", "Printer", "HP LaserJet M611", "Shared", "Ontario", "2020-06-12", 6.4], ["AT-001167", "Printer", "HP LaserJet M611", "Shared", "Ontario", "2020-05-22", 6.4], ["AT-000250", "Monitor", "Dell P2723DE 27in", "James Wilson", "Los Angeles HQ", "2020-07-08", 6.3], ["AT-000393", "Laptop", "Dell Latitude 5450", "Kevin Thomas", "Palmdale", "2020-06-21", 6.3], ["AT-000568", "Laptop", "Apple MacBook Pro 14", "Isaac Rivera", "Los Angeles HQ", "2020-06-21", 6.3], ["AT-000649", "Laptop", "Apple MacBook Pro 14", "Emily Okafor", "Los Angeles HQ", "2020-07-17", 6.3], ["AT-001016", "Desktop", "HP EliteDesk 800", "Elena Lee", "Santa Clarita", "2020-06-27", 6.3], ["AT-000105", "iPad", "Apple iPad Air", "Valeria Nguyen", "Pasadena", "2020-07-24", 6.2], ["AT-000567", "iPad", "Apple iPad Air", "Kevin Anderson", "Los Angeles HQ", "2020-08-16", 6.2], ["AT-000785", "Monitor", "LG 27UP850 27in", "Hannah Nguyen", "Torrance", "2020-08-18", 6.2], ["AT-001069", "Monitor", "LG 27UP850 27in", "Grace Gutierrez", "Los Angeles HQ", "2020-08-09", 6.2], ["AT-000460", "Monitor", "LG 27UP850 27in", "Jose Lee", "Los Angeles HQ", "2020-08-31", 6.1], ["AT-000475", "Monitor", "Dell P2723DE 27in", "Tyler Thomas", "Santa Clarita", "2020-09-11", 6.1], ["AT-000490", "Desktop", "HP EliteDesk 800", "Michael Wilson", "Los Angeles HQ", "2020-08-31", 6.1], ["AT-000777", "Laptop", "Lenovo ThinkPad T14", "Rosa Wilson", "Irvine", "2020-09-20", 6.1], ["AT-000902", "Laptop", "Lenovo ThinkPad T14", "Jordan Okafor", "Irvine", "2020-09-06", 6.1], ["AT-000040", "Laptop", "Dell Latitude 5450", "Elena Smith", "Irvine", "2020-11-04", 6.0], ["AT-000142", "iPad", "Apple iPad 10th Gen", "Marcus Johnson", "Pasadena", "2020-11-04", 6.0], ["AT-000202", "Laptop", "Apple MacBook Air 13", "Diego Okafor", "Pasadena", "2020-10-25", 6.0], ["AT-000208", "Laptop", "Apple MacBook Air 13", "Brian Lee", "Long Beach", "2020-10-03", 6.0], ["AT-000587", "Monitor", "LG 27UP850 27in", "Maria Walker", "Ontario", "2020-10-08", 6.0], ["AT-000637", "Desktop", "Dell OptiPlex 7020", "Aisha Reyes", "Santa Clarita", "2020-10-08", 6.0], ["AT-001166", "Printer", "HP LaserJet M611", "Shared", "Ontario", "2020-10-23", 6.0], ["AT-000148", "Laptop", "Apple MacBook Air 13", "Jose Rivera", "Burbank", "2020-11-19", 5.9], ["AT-000080", "iPhone", "Apple iPhone 16", "Marcus Martinez", "Los Angeles HQ", "2021-01-17", 5.8], ["AT-000239", "Laptop", "Lenovo ThinkPad T14", "Elena Ramirez", "Burbank", "2020-12-15", 5.8], ["AT-000533", "iPhone", "Apple iPhone 15", "Luis Jackson", "Los Angeles HQ", "2021-01-17", 5.8], ["AT-000713", "Laptop", "Apple MacBook Pro 14", "Michael Nguyen", "Long Beach", "2021-01-05", 5.8], ["AT-000371", "iPhone", "Apple iPhone 16", "Priya Jackson", "Torrance", "2021-02-22", 5.7], ["AT-000741", "Laptop", "Lenovo ThinkPad T14", "Priya Morales", "Long Beach", "2021-01-23", 5.7], ["AT-000788", "iPhone", "Apple iPhone 15", "Linh Reyes", "Santa Clarita", "2021-01-26", 5.7], ["AT-001158", "Printer", "Brother MFC-L8900", "Shared", "Torrance", "2021-01-29", 5.7], ["AT-000390", "Laptop", "Dell Latitude 5450", "Fatima Walker", "Los Angeles HQ", "2021-02-25", 5.6], ["AT-000610", "Desktop", "HP EliteDesk 800", "Marcus Rodriguez", "Torrance", "2021-03-23", 5.6], ["AT-000663", "Laptop", "Dell Latitude 5450", "Mei Chen", "Torrance", "2021-03-20", 5.6], ["AT-000839", "Desktop", "HP EliteDesk 800", "Jordan Reyes", "Los Angeles HQ", "2021-03-07", 5.6], ["AT-000897", "Desktop", "HP EliteDesk 800", "Maria Kim", "Long Beach", "2021-03-14", 5.6], ["AT-001060", "iPhone", "Apple iPhone 16", "Luis Thomas", "Los Angeles HQ", "2021-03-21", 5.6], ["AT-000247", "Laptop", "Dell Latitude 5450", "Hannah Gutierrez", "Santa Clarita", "2021-04-12", 5.5], ["AT-000259", "Desktop", "HP EliteDesk 800", "Aisha Lee", "Irvine", "2021-04-29", 5.5], ["AT-000351", "Laptop", "Dell Latitude 5450", "Mei Cruz", "Los Angeles HQ", "2021-04-09", 5.5], ["AT-000372", "iPad", "Apple iPad 10th Gen", "Priya Jackson", "Torrance", "2021-04-13", 5.5], ["AT-000430", "iPad", "Apple iPad Air", "Maria Anderson", "Irvine", "2021-04-09", 5.5], ["AT-000435", "iPhone", "Apple iPhone 15", "Elena Anderson", "Los Angeles HQ", "2021-04-05", 5.5], ["AT-000722", "iPhone", "Apple iPhone 15", "Elena Williams", "Santa Clarita", "2021-04-21", 5.5], ["AT-000812", "Laptop", "Apple MacBook Pro 14", "David Walker", "Ontario", "2021-04-28", 5.5], ["AT-000311", "Laptop", "Apple MacBook Pro 14", "Sofia Johnson", "Burbank", "2021-05-25", 5.4], ["AT-000352", "iPhone", "Apple iPhone 16", "Mei Cruz", "Los Angeles HQ", "2021-05-13", 5.4], ["AT-000411", "iPad", "Apple iPad Air", "Chloe Young", "Los Angeles HQ", "2021-05-23", 5.4], ["AT-000629", "iPhone", "Apple iPhone 16", "Tyler Gutierrez", "Santa Clarita", "2021-05-11", 5.4], ["AT-000753", "iPhone", "Apple iPhone 16", "Emily Hernandez", "Los Angeles HQ", "2021-06-06", 5.4], ["AT-000007", "iPhone", "Apple iPhone 16", "Carlos Smith", "Los Angeles HQ", "2021-07-12", 5.3], ["AT-000699", "Laptop", "Apple MacBook Pro 14", "Tyler Rivera", "Los Angeles HQ", "2021-07-03", 5.3], ["AT-000894", "iPhone", "Apple iPhone 16", "Rosa Martinez", "Los Angeles HQ", "2021-07-08", 5.3], ["AT-000005", "Desktop", "HP EliteDesk 800", "Valeria Lopez", "Long Beach", "2021-08-13", 5.2], ["AT-000418", "Laptop", "Apple MacBook Pro 14", "Diego Johnson", "Palmdale", "2021-08-19", 5.2], ["AT-000450", "Laptop", "Apple MacBook Air 13", "Priya Okafor", "Santa Clarita", "2021-08-10", 5.2], ["AT-000459", "iPad", "Apple iPad 10th Gen", "Jose Lee", "Los Angeles HQ", "2021-07-30", 5.2], ["AT-000474", "iPhone", "Apple iPhone 16", "Tyler Thomas", "Santa Clarita", "2021-08-16", 5.2], ["AT-000542", "iPhone", "Apple iPhone 15", "Yuki Okafor", "Burbank", "2021-08-24", 5.2], ["AT-000675", "Laptop", "Lenovo ThinkPad T14", "Tyler Thomas", "Torrance", "2021-08-14", 5.2], ["AT-000076", "Laptop", "Apple MacBook Air 13", "Isaac Lee", "Long Beach", "2021-08-28", 5.1], ["AT-000746", "Desktop", "Dell OptiPlex 7020", "James Walker", "Irvine", "2021-09-12", 5.1], ["AT-000787", "Laptop", "Dell Latitude 5450", "Linh Reyes", "Santa Clarita", "2021-09-19", 5.1], ["AT-001029", "Laptop", "Apple MacBook Pro 14", "David Davis", "Ontario", "2021-09-10", 5.1], ["AT-000235", "Laptop", "Dell Latitude 5450", "Nora Patel", "Santa Clarita", "2021-10-17", 5.0], ["AT-000414", "iPad", "Apple iPad 10th Gen", "Jordan Hall", "Irvine", "2021-10-27", 5.0], ["AT-000628", "Laptop", "Apple MacBook Pro 14", "Tyler Gutierrez", "Santa Clarita", "2021-10-16", 5.0], ["AT-000642", "iPhone", "Apple iPhone 15", "Jasmine Johnson", "Los Angeles HQ", "2021-10-06", 5.0], ["AT-000974", "Laptop", "Dell Latitude 5450", "Carlos Tran", "Santa Clarita", "2021-10-04", 5.0], ["AT-000426", "iPad", "Apple iPad 10th Gen", "Daniel Lopez", "Los Angeles HQ", "2021-12-10", 4.9], ["AT-000492", "iPad", "Apple iPad 10th Gen", "Michael Wilson", "Los Angeles HQ", "2021-11-07", 4.9], ["AT-000783", "Laptop", "Lenovo ThinkPad T14", "Hannah Nguyen", "Torrance", "2021-11-23", 4.9], ["AT-001051", "Laptop", "Apple MacBook Pro 14", "Fatima Rivera", "Burbank", "2021-12-05", 4.9], ["AT-000209", "iPhone", "Apple iPhone 16", "Brian Lee", "Long Beach", "2021-12-29", 4.8], ["AT-000243", "iPhone", "Apple iPhone 16", "Andre Patel", "Irvine", "2022-01-10", 4.8], ["AT-000256", "iPhone", "Apple iPhone 16", "Marcus Anderson", "Pasadena", "2021-12-21", 4.8], ["AT-000434", "Laptop", "Apple MacBook Air 13", "Elena Anderson", "Los Angeles HQ", "2022-01-14", 4.8], ["AT-000791", "iPhone", "Apple iPhone 16", "Carlos Johnson", "Palmdale", "2022-01-10", 4.8], ["AT-000857", "Laptop", "Apple MacBook Pro 14", "Yuki Tran", "Santa Clarita", "2022-01-09", 4.8], ["AT-001027", "iPad", "Apple iPad 10th Gen", "Maria Garcia", "Pasadena", "2021-12-15", 4.8], ["AT-000317", "iPhone", "Apple iPhone 15", "Carlos Okafor", "Pasadena", "2022-02-22", 4.7], ["AT-000349", "iPhone", "Apple iPhone 15", "Fatima Lee", "Long Beach", "2022-01-20", 4.7], ["AT-000521", "Laptop", "Apple MacBook Pro 14", "Brian Lopez", "Irvine", "2022-01-21", 4.7], ["AT-000566", "Laptop", "Apple MacBook Air 13", "Kevin Anderson", "Los Angeles HQ", "2022-02-11", 4.7], ["AT-000598", "iPhone", "Apple iPhone 16", "Yuki Chen", "Los Angeles HQ", "2022-01-29", 4.7], ["AT-000613", "iPhone", "Apple iPhone 16", "Ana Lee", "Irvine", "2022-02-14", 4.7], ["AT-000725", "iPhone", "Apple iPhone 16", "Michael Rivera", "Pasadena", "2022-02-04", 4.7], ["AT-000316", "Laptop", "Lenovo ThinkPad T14", "Carlos Okafor", "Pasadena", "2022-03-22", 4.6], ["AT-000484", "iPhone", "Apple iPhone 16", "Valeria Gutierrez", "Los Angeles HQ", "2022-03-13", 4.6], ["AT-000700", "iPhone", "Apple iPhone 16", "Tyler Rivera", "Los Angeles HQ", "2022-03-19", 4.6], ["AT-000752", "Laptop", "Apple MacBook Air 13", "Emily Hernandez", "Los Angeles HQ", "2022-04-01", 4.6], ["AT-000858", "iPhone", "Apple iPhone 15", "Yuki Tran", "Santa Clarita", "2022-03-04", 4.6], ["AT-000213", "iPhone", "Apple iPhone 16", "David Jackson", "Los Angeles HQ", "2022-04-07", 4.5], ["AT-000431", "Laptop", "Dell Latitude 5450", "Andre Rivera", "Palmdale", "2022-04-10", 4.5], ["AT-000639", "iPhone", "Apple iPhone 16", "Yuki Smith", "Los Angeles HQ", "2022-04-02", 4.5], ["AT-000641", "Laptop", "Apple MacBook Air 13", "Jasmine Johnson", "Los Angeles HQ", "2022-04-16", 4.5], ["AT-000810", "Laptop", "Apple MacBook Air 13", "Linh Cruz", "Long Beach", "2022-04-13", 4.5], ["AT-000823", "iPhone", "Apple iPhone 15", "Ana Reyes", "Burbank", "2022-04-25", 4.5], ["AT-001052", "iPhone", "Apple iPhone 15", "Fatima Rivera", "Burbank", "2022-04-14", 4.5], ["AT-000103", "Laptop", "Apple MacBook Pro 14", "Valeria Nguyen", "Pasadena", "2022-05-16", 4.4], ["AT-000673", "iPhone", "Apple iPhone 16", "Marcus Jackson", "Los Angeles HQ", "2022-05-10", 4.4], ["AT-000692", "Laptop", "Lenovo ThinkPad T14", "Maria Reyes", "Long Beach", "2022-06-03", 4.4], ["AT-000359", "iPhone", "Apple iPhone 16", "Maria Tran", "Los Angeles HQ", "2022-07-02", 4.3], ["AT-000507", "iPhone", "Apple iPhone 15", "Samuel Brown", "Ontario", "2022-06-21", 4.3], ["AT-000701", "iPad", "Apple iPad Air", "Tyler Rivera", "Los Angeles HQ", "2022-07-07", 4.3], ["AT-000876", "iPhone", "Apple iPhone 15", "Mei Young", "Ontario", "2022-06-18", 4.3], ["AT-000083", "iPhone", "Apple iPhone 15", "Daniel Thomas", "Burbank", "2022-08-19", 4.2], ["AT-000189", "Laptop", "Dell Latitude 5450", "Nora Rodriguez", "Torrance", "2022-08-10", 4.2], ["AT-000255", "Laptop", "Dell Latitude 5450", "Marcus Anderson", "Pasadena", "2022-08-05", 4.2], ["AT-000461", "Laptop", "Apple MacBook Pro 14", "Jose Torres", "Los Angeles HQ", "2022-08-04", 4.2], ["AT-000538", "Laptop", "Apple MacBook Pro 14", "Priya Cruz", "Los Angeles HQ", "2022-08-24", 4.2], ["AT-000970", "iPhone", "Apple iPhone 15", "Carlos Torres", "Burbank", "2022-08-03", 4.2], ["AT-000397", "Laptop", "Lenovo ThinkPad T14", "Mei Torres", "Pasadena", "2022-08-28", 4.1], ["AT-000545", "Laptop", "Dell Latitude 5450", "Fatima Jackson", "Los Angeles HQ", "2022-09-03", 4.1], ["AT-000848", "iPhone", "Apple iPhone 16", "Omar Walker", "Los Angeles HQ", "2022-09-05", 4.1], ["AT-001037", "Laptop", "Apple MacBook Pro 14", "Jose Johnson", "Los Angeles HQ", "2022-09-25", 4.1], ["AT-000134", "Laptop", "Apple MacBook Air 13", "Priya Rivera", "Ontario", "2022-10-03", 4.0], ["AT-000557", "iPhone", "Apple iPhone 16", "Rosa Davis", "Los Angeles HQ", "2022-10-23", 4.0], ["AT-000590", "Laptop", "Dell Latitude 5450", "Emily Brown", "Los Angeles HQ", "2022-10-03", 4.0], ["AT-000624", "Laptop", "Apple MacBook Air 13", "Omar Torres", "Long Beach", "2022-10-13", 4.0], ["AT-000660", "iPhone", "Apple iPhone 16", "Marcus Chen", "Burbank", "2022-12-07", 3.9], ["AT-000002", "iPhone", "Apple iPhone 15", "Jasmine Hernandez", "Long Beach", "2023-01-11", 3.8], ["AT-000035", "iPhone", "Apple iPhone 16", "Ethan Gutierrez", "Los Angeles HQ", "2023-01-18", 3.8], ["AT-000621", "iPhone", "Apple iPhone 15", "Ana Cruz", "Los Angeles HQ", "2022-12-16", 3.8], ["AT-000491", "iPhone", "Apple iPhone 15", "Michael Wilson", "Los Angeles HQ", "2023-02-08", 3.7], ["AT-000682", "iPhone", "Apple iPhone 15", "Jasmine Garcia", "Pasadena", "2023-01-26", 3.7], ["AT-000169", "iPhone", "Apple iPhone 15", "Elena Brown", "Palmdale", "2023-02-26", 3.6], ["AT-000697", "iPhone", "Apple iPhone 15", "Grace Torres", "Burbank", "2023-03-04", 3.6], ["AT-000032", "iPhone", "Apple iPhone 16", "Andre Johnson", "Palmdale", "2023-04-06", 3.5], ["AT-000410", "iPhone", "Apple iPhone 16", "Chloe Young", "Los Angeles HQ", "2023-05-06", 3.5], ["AT-000585", "iPhone", "Apple iPhone 15", "Maria Walker", "Ontario", "2023-04-23", 3.5], ["AT-000830", "iPhone", "Apple iPhone 15", "Nora Okafor", "Los Angeles HQ", "2023-04-10", 3.5], ["AT-001026", "iPhone", "Apple iPhone 15", "Maria Garcia", "Pasadena", "2023-04-06", 3.5], ["AT-000515", "iPhone", "Apple iPhone 16", "Priya Lee", "Pasadena", "2023-05-25", 3.4], ["AT-000742", "iPhone", "Apple iPhone 15", "Priya Morales", "Long Beach", "2023-05-19", 3.4], ["AT-000761", "iPhone", "Apple iPhone 15", "Ana Brown", "Pasadena", "2023-05-22", 3.4], ["AT-000955", "iPhone", "Apple iPhone 15", "Maria Chen", "Torrance", "2023-05-19", 3.4], ["AT-000451", "iPhone", "Apple iPhone 16", "Priya Okafor", "Santa Clarita", "2023-07-01", 3.3], ["AT-000929", "iPhone", "Apple iPhone 16", "David Cruz", "Torrance", "2023-06-28", 3.3], ["AT-001100", "iPhone", "Apple iPhone 15", "Tyler Reyes", "Long Beach", "2023-06-25", 3.3], ["AT-001102", "iPhone", "Apple iPhone 16", "Andre Smith", "Ontario", "2023-07-08", 3.3], ["AT-000272", "iPhone", "Apple iPhone 15", "Diego Williams", "Los Angeles HQ", "2023-08-04", 3.2], ["AT-000278", "iPhone", "Apple iPhone 16", "Ana Anderson", "Los Angeles HQ", "2023-07-20", 3.2], ["AT-000398", "iPhone", "Apple iPhone 16", "Mei Torres", "Pasadena", "2023-08-04", 3.2], ["AT-000519", "iPhone", "Apple iPhone 15", "Ana Rivera", "Palmdale", "2023-08-09", 3.2], ["AT-000842", "iPhone", "Apple iPhone 15", "Nora Lopez", "Los Angeles HQ", "2023-08-18", 3.2], ["AT-000149", "iPhone", "Apple iPhone 16", "Jose Rivera", "Burbank", "2023-09-12", 3.1], ["AT-000240", "iPhone", "Apple iPhone 16", "Elena Ramirez", "Burbank", "2023-09-01", 3.1], ["AT-000286", "iPhone", "Apple iPhone 16", "Marcus Smith", "Long Beach", "2023-09-05", 3.1], ["AT-000705", "iPhone", "Apple iPhone 15", "Luis Lee", "Torrance", "2023-10-01", 3.0]]}, {"key": "warranty", "label": "Warranty ending", "description": "Warranties that end in the next 90 days. Fix known issues while they're still covered.", "columns": ["Asset tag", "Type", "Model", "Assigned to", "Site", "Warranty ends", "Days left"], "rows": [["AT-000726", "Monitor", "Dell P2723DE 27in", "Michael Rivera", "Pasadena", "2026-10-19", 0], ["AT-000236", "iPhone", "Apple iPhone 15", "Nora Patel", "Santa Clarita", "2026-10-20", 1], ["AT-000275", "iPhone", "Apple iPhone 15", "Tyler Thomas", "Irvine", "2026-10-26", 7], ["AT-000512", "iPhone", "Apple iPhone 15", "Diego Jackson", "Torrance", "2026-10-29", 10], ["AT-000394", "iPhone", "Apple iPhone 15", "Kevin Thomas", "Palmdale", "2026-10-31", 12], ["AT-000717", "iPad", "Apple iPad Air", "Linh Garcia", "Burbank", "2026-11-01", 13], ["AT-000820", "iPhone", "Apple iPhone 16", "Mei Okafor", "Irvine", "2026-11-01", 13], ["AT-000845", "iPhone", "Apple iPhone 16", "Mei Hernandez", "Irvine", "2026-11-06", 18], ["AT-001082", "iPhone", "Apple iPhone 16", "Mei Rodriguez", "Torrance", "2026-11-06", 18], ["AT-000471", "iPhone", "Apple iPhone 15", "Diego Smith", "Long Beach", "2026-11-09", 21], ["AT-001023", "iPhone", "Apple iPhone 16", "Chloe Davis", "Ontario", "2026-11-11", 23], ["AT-000513", "Monitor", "LG 27UP850 27in", "Diego Jackson", "Torrance", "2026-11-14", 26], ["AT-000054", "Laptop", "Apple MacBook Air 13", "Michael Davis", "Torrance", "2026-11-15", 27], ["AT-000031", "Laptop", "Apple MacBook Pro 14", "Andre Johnson", "Palmdale", "2026-11-20", 32], ["AT-000923", "iPhone", "Apple iPhone 15", "Chloe Young", "Santa Clarita", "2026-11-21", 33], ["AT-000022", "Laptop", "Apple MacBook Air 13", "Linh Kim", "Palmdale", "2026-11-22", 34], ["AT-000121", "Laptop", "Apple MacBook Air 13", "Rosa Gutierrez", "Torrance", "2026-11-22", 34], ["AT-001084", "Laptop", "Lenovo ThinkPad T14", "Grace Anderson", "Burbank", "2026-11-22", 34], ["AT-001079", "Monitor", "LG 27UP850 27in", "Samuel Reyes", "Palmdale", "2026-11-24", 36], ["AT-000688", "Laptop", "Dell Latitude 5450", "Samuel Okafor", "Burbank", "2026-11-25", 37], ["AT-000052", "iPhone", "Apple iPhone 16", "James Hall", "Long Beach", "2026-11-29", 41], ["AT-000577", "Laptop", "Apple MacBook Air 13", "Elena Torres", "Los Angeles HQ", "2026-11-29", 41], ["AT-000932", "iPad", "Apple iPad 10th Gen", "Rosa Garcia", "Burbank", "2026-11-29", 41], ["AT-001107", "Desktop", "Dell OptiPlex 7020", "Jasmine Nguyen", "Long Beach", "2026-12-01", 43], ["AT-001130", "Printer", "Brother MFC-L8900", "Shared", "Santa Clarita", "2026-12-04", 46], ["AT-000244", "Monitor", "LG 27UP850 27in", "Andre Patel", "Irvine", "2026-12-05", 47], ["AT-000375", "Laptop", "Dell Latitude 5450", "Elena Gutierrez", "Burbank", "2026-12-06", 48], ["AT-000417", "Monitor", "Dell P2723DE 27in", "Grace Hernandez", "Los Angeles HQ", "2026-12-06", 48], ["AT-000679", "iPhone", "Apple iPhone 16", "Michael Tran", "Torrance", "2026-12-07", 49], ["AT-000672", "Desktop", "Dell OptiPlex 7020", "Marcus Jackson", "Los Angeles HQ", "2026-12-08", 50], ["AT-000983", "iPad", "Apple iPad 10th Gen", "Ethan Ramirez", "Ontario", "2026-12-08", 50], ["AT-000200", "iPhone", "Apple iPhone 15", "Jose Jackson", "Los Angeles HQ", "2026-12-09", 51], ["AT-000420", "Monitor", "Dell P2723DE 27in", "Diego Johnson", "Palmdale", "2026-12-09", 51], ["AT-000609", "Monitor", "LG 27UP850 27in", "David Chen", "Burbank", "2026-12-09", 51], ["AT-000510", "Desktop", "Dell OptiPlex 7020", "Omar Hernandez", "Burbank", "2026-12-10", 52], ["AT-000724", "Laptop", "Lenovo ThinkPad T14", "Michael Rivera", "Pasadena", "2026-12-12", 54], ["AT-000695", "Monitor", "Dell P2723DE 27in", "Maria Reyes", "Long Beach", "2026-12-13", 55], ["AT-000586", "Monitor", "Dell P2723DE 27in", "Maria Walker", "Ontario", "2026-12-19", 61], ["AT-000223", "iPhone", "Apple iPhone 16", "Kevin Ramirez", "Pasadena", "2026-12-24", 66], ["AT-000176", "Laptop", "Lenovo ThinkPad T14", "Michael Cruz", "Pasadena", "2026-12-26", 68], ["AT-000448", "iPhone", "Apple iPhone 15", "Hannah Kim", "Los Angeles HQ", "2026-12-28", 70], ["AT-000009", "Laptop", "Apple MacBook Air 13", "David Walker", "Los Angeles HQ", "2026-12-31", 73], ["AT-000320", "Laptop", "Apple MacBook Air 13", "Mei Kim", "Santa Clarita", "2026-12-31", 73], ["AT-000680", "Monitor", "LG 27UP850 27in", "Michael Tran", "Torrance", "2026-12-31", 73], ["AT-000622", "Monitor", "LG 27UP850 27in", "Ana Cruz", "Los Angeles HQ", "2027-01-07", 80], ["AT-001000", "Monitor", "Dell P2723DE 27in", "David Davis", "Los Angeles HQ", "2027-01-07", 80], ["AT-001042", "Desktop", "Dell OptiPlex 7020", "Maria Martinez", "Los Angeles HQ", "2027-01-09", 82], ["AT-000074", "Desktop", "Dell OptiPlex 7020", "Jasmine Brown", "Pasadena", "2027-01-11", 84], ["AT-000307", "Laptop", "Apple MacBook Air 13", "James Flores", "Santa Clarita", "2027-01-11", 84], ["AT-000797", "Laptop", "Apple MacBook Pro 14", "Maria Reyes", "Santa Clarita", "2027-01-12", 85], ["AT-001035", "Laptop", "Apple MacBook Pro 14", "Michael Jackson", "Torrance", "2027-01-13", 86], ["AT-000206", "iPhone", "Apple iPhone 16", "Samuel Chen", "Irvine", "2027-01-14", 87], ["AT-000024", "Monitor", "Dell P2723DE 27in", "Linh Kim", "Palmdale", "2027-01-16", 89], ["AT-000362", "iPhone", "Apple iPhone 16", "Sofia Jackson", "Ontario", "2027-01-16", 89], ["AT-000627", "Monitor", "LG 27UP850 27in", "Omar Torres", "Long Beach", "2027-01-17", 90]]}]};
+
+// ---------- helpers ----------
+const $ = id => document.getElementById(id);
+const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const num = n => Number(n).toLocaleString("en-US");
+const money = n => "$" + Math.round(n).toLocaleString("en-US");
+const moneyShort = n => n >= 1000 ? "$" + (n / 1000).toFixed(n >= 100000 ? 0 : 1) + "k" : "$" + Math.round(n);
+const NS = "http://www.w3.org/2000/svg";
+function el(tag, attrs = {}, text) {
+  const e = document.createElementNS(NS, tag);
+  for (const [k, v] of Object.entries(attrs)) e.setAttribute(k, v);
+  if (text !== undefined) e.textContent = text;
+  return e;
+}
+const tip = $("tip");
+function showTip(evt, html) {
+  tip.innerHTML = html; tip.style.opacity = 1;
+  const pad = 14, w = tip.offsetWidth, h = tip.offsetHeight;
+  let x = evt.clientX + pad, y = evt.clientY + pad;
+  if (x + w > innerWidth - 8) x = evt.clientX - w - pad;
+  if (y + h > innerHeight - 8) y = evt.clientY - h - pad;
+  tip.style.left = x + "px"; tip.style.top = y + "px";
+}
+const hideTip = () => tip.style.opacity = 0;
+function tableHTML(cols, rows) {
+  return "<table><thead><tr>" + cols.map(c => `<th>${esc(c)}</th>`).join("") + "</tr></thead><tbody>" +
+    rows.map(r => "<tr>" + r.map(v => `<td>${esc(v)}</td>`).join("") + "</tr>").join("") + "</tbody></table>";
+}
+function niceMax(v) {
+  const p = Math.pow(10, Math.floor(Math.log10(v))), f = v / p;
+  return (f <= 1 ? 1 : f <= 2 ? 2 : f <= 2.5 ? 2.5 : f <= 5 ? 5 : 10) * p;
+}
+
+// Device types always get the same color, in a fixed order
+const TYPES = DATA.types;
+const TYPE_COLOR = Object.fromEntries(TYPES.map((t, i) => [t, `var(--s${i + 1})`]));
+function legend(target, items) {
+  $(target).innerHTML = items.map(([name, color]) => `<span><i style="background:${color}"></i>${esc(name)}</span>`).join("");
+}
+
+// ---------- header + KPIs ----------
+$("company").textContent = DATA.company;
+$("asof").textContent = "As of " + new Date(DATA.as_of + "T12:00:00").toLocaleDateString("en-US", {month: "long", day: "numeric", year: "numeric"});
+const k = DATA.kpis;
+const STATUS = {critical: "var(--critical)", serious: "var(--serious)", warning: "var(--warning)", good: "var(--good)"};
+$("kpis").innerHTML = [
+  ["Active devices", num(k.active), `${num(k.in_use)} in use · ${num(k.in_stock)} spares · ${num(k.in_repair)} in repair`],
+  ["Overdue for refresh", num(k.overdue), `${money(k.overdue_cost)} to replace`, "serious"],
+  ["Offboarding gaps", num(k.offboarding_devices), `devices still with ${num(k.offboarding_people)} former employees`, "critical"],
+  ["Compliance issues", num(k.compliance), "missing MDM, encryption or check-ins", "critical"],
+  ["Warranties ending", num(k.warranty), "in the next 90 days", "warning"],
+].map(([label, value, note, status]) => `
+  <div class="kpi">
+    <div class="label">${status ? `<span class="dot" style="background:${STATUS[status]}" aria-hidden="true"></span>` : ""}${label}</div>
+    <div class="value">${value}</div>
+    <div class="note">${note}</div>
+  </div>`).join("");
+
+// ---------- stacked horizontal bars (sites by type, fleet age) ----------
+function stackedBars(target, rows, keys, colorOf, opts = {}) {
+  const W = 560, labelW = opts.labelW || 110, rowH = 26, barH = 16, top = 4, right = 44;
+  const H = top + rows.length * rowH + 24;
+  const max = niceMax(Math.max(...rows.map(r => keys.reduce((s, kk) => s + (r.values[kk] || 0), 0))));
+  const x = v => labelW + (v / max) * (W - labelW - right);
+  const svg = el("svg", {viewBox: `0 0 ${W} ${H}`, role: "img", "aria-label": opts.aria || ""});
+  for (let i = 0; i <= 4; i++) {
+    const v = max * i / 4, xx = x(v);
+    svg.append(el("line", {x1: xx, x2: xx, y1: top, y2: H - 20, stroke: i ? "var(--grid)" : "var(--axis)", "stroke-width": 1}));
+    svg.append(el("text", {x: xx, y: H - 6, "text-anchor": "middle", class: "tick"}, num(v)));
+  }
+  rows.forEach((r, i) => {
+    const y = top + i * rowH + (rowH - barH) / 2;
+    svg.append(el("text", {x: labelW - 8, y: y + barH / 2 + 4, "text-anchor": "end", class: "cat"}, r.label));
+    let acc = 0;
+    const segs = keys.filter(kk => r.values[kk]);
+    segs.forEach((kk, j) => {
+      const v = r.values[kk], x0 = x(acc), x1 = x(acc + v);
+      const w = Math.max(0, x1 - x0 - (j < segs.length - 1 ? 2 : 0));  // 2px gap between segments
+      const last = j === segs.length - 1;
+      const path = last && w >= 8
+        ? `M${x0},${y} h${w - 4} a4,4 0 0 1 4,4 v${barH - 8} a4,4 0 0 1 -4,4 h${-(w - 4)} z`
+        : `M${x0},${y} h${w} v${barH} h${-w} z`;
+      svg.append(el("path", {d: path, fill: colorOf(kk)}));
+      acc += v;
+    });
+    svg.append(el("text", {x: x(acc) + 6, y: y + barH / 2 + 4, class: "val"}, num(acc)));
+    const hit = el("rect", {x: 0, y: top + i * rowH, width: W, height: rowH, class: "hit"});
+    hit.addEventListener("mousemove", e => showTip(e, `<b>${esc(r.label)}</b> · ${num(acc)} total<br>` +
+      keys.filter(kk => r.values[kk]).map(kk => `${esc(kk)}: ${num(r.values[kk])}`).join("<br>")));
+    hit.addEventListener("mouseleave", hideTip);
+    svg.append(hit);
+  });
+  $(target).replaceChildren(svg);
+}
+
+// Devices by site
+legend("siteLegend", TYPES.map(t => [t, TYPE_COLOR[t]]));
+stackedBars("siteChart", DATA.sites, TYPES, t => TYPE_COLOR[t], {aria: "Stacked bar chart of active devices per site by type"});
+$("siteTable").innerHTML = tableHTML(["Site", ...TYPES, "Total"],
+  DATA.sites.map(s => [s.label, ...TYPES.map(t => s.values[t] || 0), TYPES.reduce((a, t) => a + (s.values[t] || 0), 0)]));
+
+// Fleet age (ordinal blue ramp: newer = lighter)
+const BANDS = DATA.age_bands, BAND_COLOR = Object.fromEntries(BANDS.map((b, i) => [b, `var(--q${i + 1})`]));
+legend("ageLegend", BANDS.map(b => [b, BAND_COLOR[b]]));
+stackedBars("ageChart", DATA.fleet_age, BANDS, b => BAND_COLOR[b], {labelW: 70, aria: "Stacked bar chart of device age per type"});
+$("ageTable").innerHTML = tableHTML(["Type", ...BANDS], DATA.fleet_age.map(r => [r.label, ...BANDS.map(b => r.values[b] || 0)]));
+
+// ---------- refresh forecast (vertical bars) ----------
+(function forecast() {
+  const rows = DATA.forecast, W = 520, H = 250, left = 52, bottom = 40, top = 22;
+  const max = niceMax(Math.max(...rows.map(r => r.cost)));
+  const bw = Math.min(64, (W - left) / rows.length - 18);
+  const step = (W - left) / rows.length;
+  const y = v => top + (1 - v / max) * (H - top - bottom);
+  const svg = el("svg", {viewBox: `0 0 ${W} ${H}`, role: "img", "aria-label": "Bar chart of refresh cost by year"});
+  for (let i = 0; i <= 4; i++) {
+    const v = max * i / 4;
+    svg.append(el("line", {x1: left, x2: W, y1: y(v), y2: y(v), stroke: i ? "var(--grid)" : "var(--axis)"}));
+    svg.append(el("text", {x: left - 8, y: y(v) + 4, "text-anchor": "end", class: "tick"}, moneyShort(v)));
+  }
+  rows.forEach((r, i) => {
+    const cx = left + step * i + step / 2, x0 = cx - bw / 2, yy = y(r.cost), h = H - bottom - yy;
+    const overdue = r.due === "Overdue now";
+    const label = overdue ? "Overdue" : r.due === DATA.as_of.slice(0, 4) ? "Rest of " + r.due : r.due;
+    const d = `M${x0},${H - bottom} v${-(h - 4)} a4,4 0 0 1 4,-4 h${bw - 8} a4,4 0 0 1 4,4 v${h - 4} z`;
+    svg.append(el("path", {d, fill: overdue ? "var(--serious)" : "var(--s1)"}));
+    svg.append(el("text", {x: cx, y: yy - 6, "text-anchor": "middle", class: "val"}, moneyShort(r.cost)));
+    svg.append(el("text", {x: cx, y: H - bottom + 16, "text-anchor": "middle", class: "cat"}, label));
+    svg.append(el("text", {x: cx, y: H - bottom + 31, "text-anchor": "middle", class: "tick"}, num(r.devices) + " devices"));
+    const hit = el("rect", {x: left + step * i, y: top, width: step, height: H - top - bottom, class: "hit"});
+    hit.addEventListener("mousemove", e => showTip(e, `<b>${overdue ? "Overdue now" : "Due " + label.replace("Rest of", "in the rest of")}</b><br>${num(r.devices)} devices · ${money(r.cost)}`));
+    hit.addEventListener("mouseleave", hideTip);
+    svg.insertBefore(hit, svg.firstChild);
+  });
+  $("forecastChart").replaceChildren(svg);
+  $("forecastTable").innerHTML = tableHTML(["Due", "Devices", "Estimated cost"], rows.map(r => [r.due, num(r.devices), money(r.cost)]));
+})();
+
+// ---------- compliance breakdown ----------
+(function issues() {
+  const items = DATA.compliance_summary, max = Math.max(...items.map(i => i.count), 1);
+  $("issues").innerHTML = items.map(i => `
+    <li>
+      <span class="name"><span class="badge" style="color:${STATUS[i.status]}">${i.status === "critical" ? "!" : "•"}</span>${esc(i.label)}</span>
+      <span class="count">${num(i.count)}</span>
+      <span class="bar"><b style="width:${(i.count / max * 100).toFixed(1)}%;background:${STATUS[i.status]}"></b></span>
+    </li>`).join("");
+})();
+
+// ---------- action list ----------
+const TABS = DATA.actions;
+let current = TABS[0].key;
+const tabsEl = $("tabs"), search = $("search");
+TABS.forEach(t => {
+  const b = document.createElement("button");
+  b.className = "tab"; b.type = "button"; b.setAttribute("role", "tab"); b.dataset.key = t.key;
+  b.innerHTML = `${esc(t.label)}<span class="n">${num(t.rows.length)}</span>`;
+  b.addEventListener("click", () => { current = t.key; renderTable(); });
+  tabsEl.insertBefore(b, search);
+});
+search.addEventListener("input", renderTable);
+function renderTable() {
+  const t = TABS.find(x => x.key === current), q = search.value.trim().toLowerCase();
+  tabsEl.querySelectorAll(".tab").forEach(b => b.setAttribute("aria-selected", b.dataset.key === current));
+  $("tabDesc").textContent = t.description;
+  const rows = q ? t.rows.filter(r => r.some(v => String(v ?? "").toLowerCase().includes(q))) : t.rows;
+  $("actionTable").innerHTML = "<thead><tr>" + t.columns.map(c => `<th>${esc(c)}</th>`).join("") + "</tr></thead><tbody>" +
+    (rows.length ? rows.map(r => "<tr>" + r.map(v => `<td>${esc(v)}</td>`).join("") + "</tr>").join("")
+                 : `<tr><td class="empty" colspan="${t.columns.length}">No matches</td></tr>`) + "</tbody>";
+}
+renderTable();
+
+// ---------- theme toggle ----------
+$("themeBtn").addEventListener("click", () => {
+  const root = document.documentElement;
+  const dark = root.dataset.theme ? root.dataset.theme === "dark" : matchMedia("(prefers-color-scheme: dark)").matches;
+  root.dataset.theme = dark ? "light" : "dark";
+});
+</script>
+</body>
+</html>

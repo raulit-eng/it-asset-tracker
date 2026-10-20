@@ -1,0 +1,348 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>IT Asset Tracker</title>
+<style>
+  :root {
+    color-scheme: light;
+    --page: #f9f9f7; --surface: #fcfcfb; --ink: #0b0b0b; --ink-2: #52514e; --muted: #898781;
+    --grid: #e1e0d9; --axis: #c3c2b7; --ring: rgba(11,11,11,0.10); --wash: rgba(11,11,11,0.04);
+    --s1: #2a78d6; --s2: #eb6834; --s3: #1baf7a; --s4: #eda100; --s5: #e87ba4; --s6: #008300;
+    --q1: #86b6ef; --q2: #3987e5; --q3: #1c5cab; --q4: #0d366b;
+    --good: #0ca30c; --warning: #fab219; --serious: #ec835a; --critical: #d03b3b;
+    --accent: #2a78d6;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      color-scheme: dark;
+      --page: #0d0d0d; --surface: #1a1a19; --ink: #f0efec; --ink-2: #c3c2b7; --muted: #898781;
+      --grid: #2c2c2a; --axis: #383835; --ring: rgba(255,255,255,0.10); --wash: rgba(255,255,255,0.05);
+      --s1: #3987e5; --s2: #d95926; --s3: #199e70; --s4: #c98500; --s5: #d55181; --s6: #008300;
+      --q1: #184f95; --q2: #256abf; --q3: #3987e5; --q4: #86b6ef;
+      --accent: #3987e5;
+    }
+  }
+  :root[data-theme="dark"] {
+    color-scheme: dark;
+    --page: #0d0d0d; --surface: #1a1a19; --ink: #f0efec; --ink-2: #c3c2b7; --muted: #898781;
+    --grid: #2c2c2a; --axis: #383835; --ring: rgba(255,255,255,0.10); --wash: rgba(255,255,255,0.05);
+    --s1: #3987e5; --s2: #d95926; --s3: #199e70; --s4: #c98500; --s5: #d55181; --s6: #008300;
+    --q1: #184f95; --q2: #256abf; --q3: #3987e5; --q4: #86b6ef;
+    --accent: #3987e5;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--page); color: var(--ink);
+         font: 14px/1.45 system-ui, -apple-system, "Segoe UI", sans-serif; }
+  .wrap { max-width: 1200px; margin: 0 auto; padding: 28px 16px 48px; }
+  header { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: flex-end; gap: 12px; margin-bottom: 20px; }
+  .eyebrow { font-size: 12px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); margin: 0 0 4px; }
+  h1 { font-size: 26px; margin: 0; font-weight: 650; }
+  .sub { color: var(--ink-2); margin: 4px 0 0; }
+  .theme-btn { background: var(--surface); color: var(--ink-2); border: 1px solid var(--ring); border-radius: 8px;
+               padding: 6px 12px; font: inherit; cursor: pointer; }
+  .theme-btn:hover { background: var(--wash); }
+
+  .kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; margin-bottom: 16px; }
+  .kpi { background: var(--surface); border: 1px solid var(--ring); border-radius: 12px; padding: 16px; }
+  .kpi .label { color: var(--ink-2); font-size: 13px; display: flex; align-items: center; gap: 6px; }
+  .kpi .value { font-size: 30px; font-weight: 650; margin: 6px 0 2px; }
+  .kpi .note { color: var(--muted); font-size: 12.5px; }
+  .dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; flex: none; }
+
+  .grid2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(340px, 1fr)); gap: 16px; margin-bottom: 16px; }
+  .card { background: var(--surface); border: 1px solid var(--ring); border-radius: 12px; padding: 18px; min-width: 0; }
+  .card h2 { font-size: 15px; margin: 0 0 2px; font-weight: 600; }
+  .card .desc { color: var(--muted); font-size: 12.5px; margin: 0 0 12px; }
+  .legend { display: flex; flex-wrap: wrap; gap: 4px 14px; margin: 0 0 10px; font-size: 12.5px; color: var(--ink-2); }
+  .legend span { display: inline-flex; align-items: center; gap: 6px; }
+  .legend i { width: 10px; height: 10px; border-radius: 3px; display: inline-block; }
+  svg { display: block; width: 100%; height: auto; overflow: visible; }
+  svg text { font-family: inherit; }
+  .tick { fill: var(--muted); font-size: 11px; font-variant-numeric: tabular-nums; }
+  .cat { fill: var(--ink-2); font-size: 12px; }
+  .val { fill: var(--ink-2); font-size: 11.5px; font-variant-numeric: tabular-nums; }
+  .hit { fill: transparent; cursor: default; }
+  .hit:hover { fill: var(--wash); }
+  details { margin-top: 10px; font-size: 12.5px; color: var(--ink-2); }
+  details summary { cursor: pointer; color: var(--muted); }
+  details table { margin-top: 8px; }
+
+  .issues { list-style: none; padding: 0; margin: 4px 0 0; }
+  .issues li { display: grid; grid-template-columns: 1fr auto; gap: 8px; align-items: center; padding: 10px 0; border-top: 1px solid var(--grid); }
+  .issues li:first-child { border-top: 0; }
+  .issues .name { display: flex; align-items: center; gap: 8px; }
+  .issues .bar { grid-column: 1 / -1; height: 6px; border-radius: 3px; background: var(--grid); overflow: hidden; }
+  .issues .bar b { display: block; height: 100%; border-radius: 3px; }
+  .issues .count { font-variant-numeric: tabular-nums; font-weight: 600; }
+  .badge { font-size: 11px; font-weight: 600; border: 1.5px solid; border-radius: 4px; padding: 0 5px; line-height: 16px; }
+
+  .tabs { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 12px; align-items: center; }
+  .tab { background: transparent; color: var(--ink-2); border: 1px solid var(--ring); border-radius: 999px; padding: 6px 12px;
+         font: inherit; font-size: 13px; cursor: pointer; }
+  .tab:hover { background: var(--wash); }
+  .tab[aria-selected="true"] { background: var(--ink); color: var(--surface); border-color: var(--ink); }
+  .tab .n { opacity: .7; margin-left: 4px; font-variant-numeric: tabular-nums; }
+  .search { margin-left: auto; min-width: 200px; flex: 1 1 200px; max-width: 280px; background: var(--page); color: var(--ink);
+            border: 1px solid var(--ring); border-radius: 8px; padding: 7px 10px; font: inherit; }
+  .table-wrap { overflow-x: auto; max-height: 420px; overflow-y: auto; border-top: 1px solid var(--grid); }
+  table { border-collapse: collapse; width: 100%; font-size: 13px; }
+  th { text-align: left; color: var(--muted); font-weight: 600; font-size: 12px; position: sticky; top: 0; background: var(--surface);
+       padding: 8px 10px; border-bottom: 1px solid var(--grid); white-space: nowrap; }
+  td { padding: 7px 10px; border-bottom: 1px solid var(--grid); white-space: nowrap; font-variant-numeric: tabular-nums; }
+  tr:hover td { background: var(--wash); }
+  .tab-desc { color: var(--muted); font-size: 12.5px; margin: 0 0 8px; }
+  .empty { color: var(--muted); padding: 16px 10px; }
+
+  #tip { position: fixed; pointer-events: none; background: var(--ink); color: var(--surface); font-size: 12.5px;
+         padding: 7px 9px; border-radius: 6px; opacity: 0; transition: opacity .08s; z-index: 10; max-width: 260px; }
+  #tip b { font-weight: 600; }
+  footer { color: var(--muted); font-size: 12.5px; margin-top: 24px; }
+  footer a { color: var(--accent); }
+  @media (max-width: 520px) { h1 { font-size: 22px; } .kpi .value { font-size: 26px; } .search { max-width: none; margin-left: 0; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div>
+      <p class="eyebrow" id="company"></p>
+      <h1>IT Asset Tracker</h1>
+      <p class="sub" id="asof"></p>
+    </div>
+    <button class="theme-btn" id="themeBtn" type="button">Toggle dark mode</button>
+  </header>
+
+  <section class="kpis" id="kpis"></section>
+
+  <section class="grid2">
+    <div class="card">
+      <h2>Devices by site</h2>
+      <p class="desc">Active devices (in use, in stock or in repair)</p>
+      <div class="legend" id="siteLegend"></div>
+      <div id="siteChart"></div>
+      <details><summary>View as table</summary><div id="siteTable"></div></details>
+    </div>
+    <div class="card">
+      <h2>Refresh forecast</h2>
+      <p class="desc">Estimated replacement cost when in-use devices reach the end of their lifecycle</p>
+      <div id="forecastChart"></div>
+      <details><summary>View as table</summary><div id="forecastTable"></div></details>
+    </div>
+  </section>
+
+  <section class="grid2">
+    <div class="card">
+      <h2>Fleet age</h2>
+      <p class="desc">In-use devices by age, per device type</p>
+      <div class="legend" id="ageLegend"></div>
+      <div id="ageChart"></div>
+      <details><summary>View as table</summary><div id="ageTable"></div></details>
+    </div>
+    <div class="card">
+      <h2>Security &amp; compliance</h2>
+      <p class="desc">Managed devices in use that need attention</p>
+      <ul class="issues" id="issues"></ul>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>Action list</h2>
+    <p class="desc">Everything that needs follow-up, with who has the device and where</p>
+    <div class="tabs" role="tablist" id="tabs">
+      <input class="search" id="search" type="search" placeholder="Search name, tag, site…" aria-label="Search the action list">
+    </div>
+    <p class="tab-desc" id="tabDesc"></p>
+    <div class="table-wrap"><table id="actionTable"></table></div>
+  </section>
+
+  <footer>
+    Built with Python, SQLite and SQL from <code>sql/reports.sql</code>. All people and devices are randomly generated sample data.
+  </footer>
+</div>
+<div id="tip" role="tooltip"></div>
+
+<script>
+const DATA = /*__DATA__*/null;
+
+// ---------- helpers ----------
+const $ = id => document.getElementById(id);
+const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const num = n => Number(n).toLocaleString("en-US");
+const money = n => "$" + Math.round(n).toLocaleString("en-US");
+const moneyShort = n => n >= 1000 ? "$" + (n / 1000).toFixed(n >= 100000 ? 0 : 1) + "k" : "$" + Math.round(n);
+const NS = "http://www.w3.org/2000/svg";
+function el(tag, attrs = {}, text) {
+  const e = document.createElementNS(NS, tag);
+  for (const [k, v] of Object.entries(attrs)) e.setAttribute(k, v);
+  if (text !== undefined) e.textContent = text;
+  return e;
+}
+const tip = $("tip");
+function showTip(evt, html) {
+  tip.innerHTML = html; tip.style.opacity = 1;
+  const pad = 14, w = tip.offsetWidth, h = tip.offsetHeight;
+  let x = evt.clientX + pad, y = evt.clientY + pad;
+  if (x + w > innerWidth - 8) x = evt.clientX - w - pad;
+  if (y + h > innerHeight - 8) y = evt.clientY - h - pad;
+  tip.style.left = x + "px"; tip.style.top = y + "px";
+}
+const hideTip = () => tip.style.opacity = 0;
+function tableHTML(cols, rows) {
+  return "<table><thead><tr>" + cols.map(c => `<th>${esc(c)}</th>`).join("") + "</tr></thead><tbody>" +
+    rows.map(r => "<tr>" + r.map(v => `<td>${esc(v)}</td>`).join("") + "</tr>").join("") + "</tbody></table>";
+}
+function niceMax(v) {
+  const p = Math.pow(10, Math.floor(Math.log10(v))), f = v / p;
+  return (f <= 1 ? 1 : f <= 2 ? 2 : f <= 2.5 ? 2.5 : f <= 5 ? 5 : 10) * p;
+}
+
+// Device types always get the same color, in a fixed order
+const TYPES = DATA.types;
+const TYPE_COLOR = Object.fromEntries(TYPES.map((t, i) => [t, `var(--s${i + 1})`]));
+function legend(target, items) {
+  $(target).innerHTML = items.map(([name, color]) => `<span><i style="background:${color}"></i>${esc(name)}</span>`).join("");
+}
+
+// ---------- header + KPIs ----------
+$("company").textContent = DATA.company;
+$("asof").textContent = "As of " + new Date(DATA.as_of + "T12:00:00").toLocaleDateString("en-US", {month: "long", day: "numeric", year: "numeric"});
+const k = DATA.kpis;
+const STATUS = {critical: "var(--critical)", serious: "var(--serious)", warning: "var(--warning)", good: "var(--good)"};
+$("kpis").innerHTML = [
+  ["Active devices", num(k.active), `${num(k.in_use)} in use · ${num(k.in_stock)} spares · ${num(k.in_repair)} in repair`],
+  ["Overdue for refresh", num(k.overdue), `${money(k.overdue_cost)} to replace`, "serious"],
+  ["Offboarding gaps", num(k.offboarding_devices), `devices still with ${num(k.offboarding_people)} former employees`, "critical"],
+  ["Compliance issues", num(k.compliance), "missing MDM, encryption or check-ins", "critical"],
+  ["Warranties ending", num(k.warranty), "in the next 90 days", "warning"],
+].map(([label, value, note, status]) => `
+  <div class="kpi">
+    <div class="label">${status ? `<span class="dot" style="background:${STATUS[status]}" aria-hidden="true"></span>` : ""}${label}</div>
+    <div class="value">${value}</div>
+    <div class="note">${note}</div>
+  </div>`).join("");
+
+// ---------- stacked horizontal bars (sites by type, fleet age) ----------
+function stackedBars(target, rows, keys, colorOf, opts = {}) {
+  const W = 560, labelW = opts.labelW || 110, rowH = 26, barH = 16, top = 4, right = 44;
+  const H = top + rows.length * rowH + 24;
+  const max = niceMax(Math.max(...rows.map(r => keys.reduce((s, kk) => s + (r.values[kk] || 0), 0))));
+  const x = v => labelW + (v / max) * (W - labelW - right);
+  const svg = el("svg", {viewBox: `0 0 ${W} ${H}`, role: "img", "aria-label": opts.aria || ""});
+  for (let i = 0; i <= 4; i++) {
+    const v = max * i / 4, xx = x(v);
+    svg.append(el("line", {x1: xx, x2: xx, y1: top, y2: H - 20, stroke: i ? "var(--grid)" : "var(--axis)", "stroke-width": 1}));
+    svg.append(el("text", {x: xx, y: H - 6, "text-anchor": "middle", class: "tick"}, num(v)));
+  }
+  rows.forEach((r, i) => {
+    const y = top + i * rowH + (rowH - barH) / 2;
+    svg.append(el("text", {x: labelW - 8, y: y + barH / 2 + 4, "text-anchor": "end", class: "cat"}, r.label));
+    let acc = 0;
+    const segs = keys.filter(kk => r.values[kk]);
+    segs.forEach((kk, j) => {
+      const v = r.values[kk], x0 = x(acc), x1 = x(acc + v);
+      const w = Math.max(0, x1 - x0 - (j < segs.length - 1 ? 2 : 0));  // 2px gap between segments
+      const last = j === segs.length - 1;
+      const path = last && w >= 8
+        ? `M${x0},${y} h${w - 4} a4,4 0 0 1 4,4 v${barH - 8} a4,4 0 0 1 -4,4 h${-(w - 4)} z`
+        : `M${x0},${y} h${w} v${barH} h${-w} z`;
+      svg.append(el("path", {d: path, fill: colorOf(kk)}));
+      acc += v;
+    });
+    svg.append(el("text", {x: x(acc) + 6, y: y + barH / 2 + 4, class: "val"}, num(acc)));
+    const hit = el("rect", {x: 0, y: top + i * rowH, width: W, height: rowH, class: "hit"});
+    hit.addEventListener("mousemove", e => showTip(e, `<b>${esc(r.label)}</b> · ${num(acc)} total<br>` +
+      keys.filter(kk => r.values[kk]).map(kk => `${esc(kk)}: ${num(r.values[kk])}`).join("<br>")));
+    hit.addEventListener("mouseleave", hideTip);
+    svg.append(hit);
+  });
+  $(target).replaceChildren(svg);
+}
+
+// Devices by site
+legend("siteLegend", TYPES.map(t => [t, TYPE_COLOR[t]]));
+stackedBars("siteChart", DATA.sites, TYPES, t => TYPE_COLOR[t], {aria: "Stacked bar chart of active devices per site by type"});
+$("siteTable").innerHTML = tableHTML(["Site", ...TYPES, "Total"],
+  DATA.sites.map(s => [s.label, ...TYPES.map(t => s.values[t] || 0), TYPES.reduce((a, t) => a + (s.values[t] || 0), 0)]));
+
+// Fleet age (ordinal blue ramp: newer = lighter)
+const BANDS = DATA.age_bands, BAND_COLOR = Object.fromEntries(BANDS.map((b, i) => [b, `var(--q${i + 1})`]));
+legend("ageLegend", BANDS.map(b => [b, BAND_COLOR[b]]));
+stackedBars("ageChart", DATA.fleet_age, BANDS, b => BAND_COLOR[b], {labelW: 70, aria: "Stacked bar chart of device age per type"});
+$("ageTable").innerHTML = tableHTML(["Type", ...BANDS], DATA.fleet_age.map(r => [r.label, ...BANDS.map(b => r.values[b] || 0)]));
+
+// ---------- refresh forecast (vertical bars) ----------
+(function forecast() {
+  const rows = DATA.forecast, W = 520, H = 250, left = 52, bottom = 40, top = 22;
+  const max = niceMax(Math.max(...rows.map(r => r.cost)));
+  const bw = Math.min(64, (W - left) / rows.length - 18);
+  const step = (W - left) / rows.length;
+  const y = v => top + (1 - v / max) * (H - top - bottom);
+  const svg = el("svg", {viewBox: `0 0 ${W} ${H}`, role: "img", "aria-label": "Bar chart of refresh cost by year"});
+  for (let i = 0; i <= 4; i++) {
+    const v = max * i / 4;
+    svg.append(el("line", {x1: left, x2: W, y1: y(v), y2: y(v), stroke: i ? "var(--grid)" : "var(--axis)"}));
+    svg.append(el("text", {x: left - 8, y: y(v) + 4, "text-anchor": "end", class: "tick"}, moneyShort(v)));
+  }
+  rows.forEach((r, i) => {
+    const cx = left + step * i + step / 2, x0 = cx - bw / 2, yy = y(r.cost), h = H - bottom - yy;
+    const overdue = r.due === "Overdue now";
+    const label = overdue ? "Overdue" : r.due === DATA.as_of.slice(0, 4) ? "Rest of " + r.due : r.due;
+    const d = `M${x0},${H - bottom} v${-(h - 4)} a4,4 0 0 1 4,-4 h${bw - 8} a4,4 0 0 1 4,4 v${h - 4} z`;
+    svg.append(el("path", {d, fill: overdue ? "var(--serious)" : "var(--s1)"}));
+    svg.append(el("text", {x: cx, y: yy - 6, "text-anchor": "middle", class: "val"}, moneyShort(r.cost)));
+    svg.append(el("text", {x: cx, y: H - bottom + 16, "text-anchor": "middle", class: "cat"}, label));
+    svg.append(el("text", {x: cx, y: H - bottom + 31, "text-anchor": "middle", class: "tick"}, num(r.devices) + " devices"));
+    const hit = el("rect", {x: left + step * i, y: top, width: step, height: H - top - bottom, class: "hit"});
+    hit.addEventListener("mousemove", e => showTip(e, `<b>${overdue ? "Overdue now" : "Due " + label.replace("Rest of", "in the rest of")}</b><br>${num(r.devices)} devices · ${money(r.cost)}`));
+    hit.addEventListener("mouseleave", hideTip);
+    svg.insertBefore(hit, svg.firstChild);
+  });
+  $("forecastChart").replaceChildren(svg);
+  $("forecastTable").innerHTML = tableHTML(["Due", "Devices", "Estimated cost"], rows.map(r => [r.due, num(r.devices), money(r.cost)]));
+})();
+
+// ---------- compliance breakdown ----------
+(function issues() {
+  const items = DATA.compliance_summary, max = Math.max(...items.map(i => i.count), 1);
+  $("issues").innerHTML = items.map(i => `
+    <li>
+      <span class="name"><span class="badge" style="color:${STATUS[i.status]}">${i.status === "critical" ? "!" : "•"}</span>${esc(i.label)}</span>
+      <span class="count">${num(i.count)}</span>
+      <span class="bar"><b style="width:${(i.count / max * 100).toFixed(1)}%;background:${STATUS[i.status]}"></b></span>
+    </li>`).join("");
+})();
+
+// ---------- action list ----------
+const TABS = DATA.actions;
+let current = TABS[0].key;
+const tabsEl = $("tabs"), search = $("search");
+TABS.forEach(t => {
+  const b = document.createElement("button");
+  b.className = "tab"; b.type = "button"; b.setAttribute("role", "tab"); b.dataset.key = t.key;
+  b.innerHTML = `${esc(t.label)}<span class="n">${num(t.rows.length)}</span>`;
+  b.addEventListener("click", () => { current = t.key; renderTable(); });
+  tabsEl.insertBefore(b, search);
+});
+search.addEventListener("input", renderTable);
+function renderTable() {
+  const t = TABS.find(x => x.key === current), q = search.value.trim().toLowerCase();
+  tabsEl.querySelectorAll(".tab").forEach(b => b.setAttribute("aria-selected", b.dataset.key === current));
+  $("tabDesc").textContent = t.description;
+  const rows = q ? t.rows.filter(r => r.some(v => String(v ?? "").toLowerCase().includes(q))) : t.rows;
+  $("actionTable").innerHTML = "<thead><tr>" + t.columns.map(c => `<th>${esc(c)}</th>`).join("") + "</tr></thead><tbody>" +
+    (rows.length ? rows.map(r => "<tr>" + r.map(v => `<td>${esc(v)}</td>`).join("") + "</tr>").join("")
+                 : `<tr><td class="empty" colspan="${t.columns.length}">No matches</td></tr>`) + "</tbody>";
+}
+renderTable();
+
+// ---------- theme toggle ----------
+$("themeBtn").addEventListener("click", () => {
+  const root = document.documentElement;
+  const dark = root.dataset.theme ? root.dataset.theme === "dark" : matchMedia("(prefers-color-scheme: dark)").matches;
+  root.dataset.theme = dark ? "light" : "dark";
+});
+</script>
+</body>
+</html>
